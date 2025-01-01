@@ -4,40 +4,39 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
   prompt: string;
-  model?: "openai" | "anthropic";
+  useAnthropicModel?: boolean;
 }
 
 serve(async (req) => {
   // Обработка CORS
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, model = "openai" } = await req.json() as RequestBody;
-
+    const { prompt, useAnthropicModel = false } = await req.json() as RequestBody;
+    
     if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: "Prompt is required" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      );
+      throw new Error('Prompt is required');
     }
 
-    let generatedCode = "";
+    console.log(`Generating code for prompt: ${prompt}`);
+    console.log(`Using model: ${useAnthropicModel ? 'Anthropic' : 'OpenAI'}`);
+
+    let generatedCode = '';
 
     // Генерация кода через OpenAI
-    if (model === "openai") {
-      const openai = new OpenAI(Deno.env.get("OPENAI_API_KEY") || "");
-      
+    if (!useAnthropicModel) {
+      const openai = new OpenAI({
+        apiKey: Deno.env.get("OPENAI_API_KEY") || ""
+      });
+
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are a helpful code generator. Generate only clean code without explanations."
+            content: "You are a helpful assistant that generates clean code based on descriptions. Provide only the code without explanations."
           },
           {
             role: "user",
@@ -75,27 +74,22 @@ serve(async (req) => {
     }
 
     // Логирование успешной генерации
-    console.log(`Code generated successfully for prompt: ${prompt.substring(0, 100)}...`);
+    console.log('Code generated successfully');
 
     return new Response(
       JSON.stringify({ code: generatedCode }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    // Логирование ошибок
-    console.error("Error generating code:", error);
+    // Логирование ошибки
+    console.error('Error generating code:', error);
 
     return new Response(
-      JSON.stringify({ 
-        error: "Failed to generate code", 
-        details: error.message 
-      }),
+      JSON.stringify({ error: error.message }),
       { 
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
