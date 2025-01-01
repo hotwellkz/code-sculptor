@@ -3,7 +3,7 @@ import { Check, X } from "lucide-react";
 import { ReactNode } from "react";
 
 interface NotificationProps {
-  title: string;
+  title: ReactNode;
   description?: string;
   type?: "success" | "error";
 }
