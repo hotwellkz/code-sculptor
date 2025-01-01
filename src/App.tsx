@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import Index from "@/pages/Index";
+import Home from "@/pages/Home";
 import Auth from "@/pages/Auth";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,7 +42,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={
           <ProtectedRoute>
-            <Index />
+            <Home />
           </ProtectedRoute>
         } />
       </Routes>
