@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://deno.land/x/openai@v4.69.0/mod.ts";
-import { Anthropic } from "https://deno.land/x/anthropic@v1.1.0/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
@@ -51,22 +50,28 @@ serve(async (req) => {
     }
     // Генерация кода через Anthropic
     else {
-      const anthropic = new Anthropic({
-        apiKey: Deno.env.get("ANTHROPIC_API_KEY") || ""
-      });
-      
-      const completion = await anthropic.messages.create({
-        model: "claude-3-opus-20240229",
-        max_tokens: 4000,
-        messages: [
-          {
-            role: "user",
-            content: `Generate code based on this description: ${prompt}. Provide only clean code without explanations.`
-          }
-        ]
+      // Используем fetch напрямую для Anthropic API
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': Deno.env.get("ANTHROPIC_API_KEY") || "",
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: "claude-3-opus-20240229",
+          max_tokens: 4000,
+          messages: [
+            {
+              role: "user",
+              content: `Generate code based on this description: ${prompt}. Provide only clean code without explanations.`
+            }
+          ]
+        })
       });
 
-      generatedCode = completion.content[0]?.text || "";
+      const data = await response.json();
+      generatedCode = data.content[0]?.text || "";
     }
 
     // Логирование успешной генерации
