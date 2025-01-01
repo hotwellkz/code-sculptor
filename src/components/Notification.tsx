@@ -13,9 +13,13 @@ export const Notification = ({ title, description, type = "success" }: Notificat
   const showNotification = () => {
     toast({
       variant: type === "error" ? "destructive" : "default",
-      title,
+      title: (
+        <div className="flex items-center gap-2">
+          {type === "success" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          {title}
+        </div>
+      ),
       description,
-      icon: type === "success" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />,
     });
   };
 
