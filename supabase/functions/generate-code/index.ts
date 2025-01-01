@@ -1,6 +1,6 @@
-import { serve } from "https://deno.fresh.dev/server";
-import { OpenAI } from "https://deno.land/x/openai/mod.ts";
-import { Anthropic } from "https://deno.land/x/anthropic/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { OpenAI } from "https://deno.land/x/openai@v4.69.0/mod.ts";
+import { Anthropic } from "https://deno.land/x/anthropic@v1.1.0/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
@@ -33,7 +33,7 @@ serve(async (req) => {
     if (model === "openai") {
       const openai = new OpenAI(Deno.env.get("OPENAI_API_KEY") || "");
       
-      const completion = await openai.createChatCompletion({
+      const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
@@ -51,7 +51,9 @@ serve(async (req) => {
     }
     // Генерация кода через Anthropic
     else {
-      const anthropic = new Anthropic(Deno.env.get("ANTHROPIC_API_KEY") || "");
+      const anthropic = new Anthropic({
+        apiKey: Deno.env.get("ANTHROPIC_API_KEY") || ""
+      });
       
       const completion = await anthropic.messages.create({
         model: "claude-3-opus-20240229",
