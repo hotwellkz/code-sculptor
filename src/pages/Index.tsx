@@ -1,20 +1,34 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
-import { Sidebar, SidebarProvider, SidebarContent, SidebarTrigger } from "@/components/ui/sidebar";
+import { Sidebar, SidebarProvider, SidebarContent } from "@/components/ui/sidebar";
 import { FileManager } from "@/components/FileManager";
 import { ChatWindow } from "@/components/ChatWindow";
 import { CodePreview } from "@/components/CodePreview";
 import { ProjectsDialog } from "@/components/ProjectsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { LogOut } from "lucide-react";
 
 const Index = () => {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   return (
     <div className="h-screen flex flex-col">
       <header className="border-b p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold">AI Генератор Кода</h1>
-        <Button onClick={() => setIsProjectsOpen(true)}>Проекты</Button>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => setIsProjectsOpen(true)}>Проекты</Button>
+          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </header>
 
       <SidebarProvider>
