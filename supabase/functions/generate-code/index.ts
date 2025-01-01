@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('Received request:', req.method);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -15,8 +17,10 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
+    console.log('Received prompt:', prompt);
 
     if (!prompt) {
+      console.error('No prompt provided');
       return new Response(
         JSON.stringify({ error: 'Prompt is required' }), 
         { 
@@ -28,16 +32,19 @@ serve(async (req) => {
 
     // Initialize OpenAI client
     const openai = new OpenAI(Deno.env.get('OPENAI_API_KEY') || '');
+    console.log('OpenAI client initialized');
     
     // Initialize Anthropic client
     const anthropic = new Anthropic({
       apiKey: Deno.env.get('ANTHROPIC_API_KEY') || '',
     });
+    console.log('Anthropic client initialized');
 
     try {
       // Try OpenAI first
+      console.log('Attempting OpenAI request...');
       const openaiResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -49,6 +56,7 @@ serve(async (req) => {
           }
         ]
       });
+      console.log('OpenAI request successful');
 
       return new Response(
         JSON.stringify({ 
@@ -65,6 +73,7 @@ serve(async (req) => {
 
       // Fallback to Anthropic if OpenAI fails
       try {
+        console.log('Attempting Anthropic request...');
         const anthropicResponse = await anthropic.messages.create({
           model: "claude-3-opus-20240229",
           max_tokens: 4096,
@@ -73,6 +82,7 @@ serve(async (req) => {
             content: prompt
           }]
         });
+        console.log('Anthropic request successful');
 
         return new Response(
           JSON.stringify({ 
