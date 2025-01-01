@@ -15,7 +15,7 @@ export const Notification = ({ title, description, type = "success" }: Notificat
     const titleContent = (
       <div className="flex items-center gap-2">
         {type === "success" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        <span>{title}</span>
+        {typeof title === 'string' ? <span>{title}</span> : title}
       </div>
     );
 
@@ -26,5 +26,5 @@ export const Notification = ({ title, description, type = "success" }: Notificat
     });
   };
 
-  return null; // Этот компонент не рендерит UI, он только показывает уведомления
+  return null;
 };
