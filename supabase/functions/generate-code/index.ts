@@ -1,4 +1,4 @@
-import { serve } from "https://deno.fresh.dev/std@v9.6.1/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
 import { Anthropic } from "https://deno.land/x/anthropic@v0.1.1/mod.ts";
 
@@ -12,7 +12,7 @@ serve(async (req) => {
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
