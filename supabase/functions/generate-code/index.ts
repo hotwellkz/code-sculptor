@@ -1,81 +1,94 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { serve } from "https://deno.fresh.dev/server";
+import { OpenAI } from "https://deno.land/x/openai/mod.ts";
+import { Anthropic } from "https://deno.land/x/anthropic/mod.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+interface RequestBody {
+  prompt: string;
+  model?: "openai" | "anthropic";
+}
 
 serve(async (req) => {
-  console.log('Received request:', req.method);
-  
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Обработка CORS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { prompt, projectId } = await req.json();
-    console.log('Received prompt:', prompt);
+    const { prompt, model = "openai" } = await req.json() as RequestBody;
 
     if (!prompt) {
-      throw new Error('Prompt is required');
-    }
-
-    const openai = new OpenAI(Deno.env.get('OPENAI_API_KEY') || '');
-    console.log('OpenAI client initialized');
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful code generator. Generate clean, well-documented code based on the user's description."
-        },
-        {
-          role: "user",
-          content: prompt
+      return new Response(
+        JSON.stringify({ error: "Prompt is required" }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
-      ]
-    });
-
-    const generatedCode = response.choices[0].message.content;
-    console.log('Code generated successfully');
-
-    // Save generated code to the database
-    if (projectId) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      const { error: fileError } = await supabase
-        .from('generated_files')
-        .insert({
-          project_id: projectId,
-          name: 'generated-code.ts',
-          content: generatedCode,
-          path: '/generated-code.ts'
-        });
-
-      if (fileError) {
-        console.error('Error saving generated file:', fileError);
-        throw fileError;
-      }
+      );
     }
+
+    let generatedCode = "";
+
+    // Генерация кода через OpenAI
+    if (model === "openai") {
+      const openai = new OpenAI(Deno.env.get("OPENAI_API_KEY") || "");
+      
+      const completion = await openai.createChatCompletion({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful code generator. Generate only clean code without explanations."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      generatedCode = completion.choices[0]?.message?.content || "";
+    }
+    // Генерация кода через Anthropic
+    else {
+      const anthropic = new Anthropic(Deno.env.get("ANTHROPIC_API_KEY") || "");
+      
+      const completion = await anthropic.messages.create({
+        model: "claude-3-opus-20240229",
+        max_tokens: 4000,
+        messages: [
+          {
+            role: "user",
+            content: `Generate code based on this description: ${prompt}. Provide only clean code without explanations.`
+          }
+        ]
+      });
+
+      generatedCode = completion.content[0]?.text || "";
+    }
+
+    // Логирование успешной генерации
+    console.log(`Code generated successfully for prompt: ${prompt.substring(0, 100)}...`);
 
     return new Response(
       JSON.stringify({ code: generatedCode }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
 
   } catch (error) {
-    console.error('Error in generate-code function:', error);
+    // Логирование ошибок
+    console.error("Error generating code:", error);
+
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: "Failed to generate code", 
+        details: error.message 
+      }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
     );
   }
