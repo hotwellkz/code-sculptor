@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
-import { Anthropic } from "https://deno.land/x/anthropic@v0.1.1/mod.ts";
+import { Anthropic } from "npm:@anthropic-ai/sdk@0.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
