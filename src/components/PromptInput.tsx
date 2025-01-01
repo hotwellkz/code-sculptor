@@ -2,20 +2,47 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   isLoading?: boolean;
+  projectId?: string;
 }
 
-export const PromptInput = ({ onSubmit, isLoading }: PromptInputProps) => {
+export const PromptInput = ({ onSubmit, isLoading, projectId }: PromptInputProps) => {
   const [prompt, setPrompt] = useState("");
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim()) {
-      onSubmit(prompt);
-      setPrompt("");
+    
+    if (!prompt.trim()) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-code', {
+        body: { prompt, projectId }
+      });
+
+      if (error) throw error;
+
+      if (data.code) {
+        onSubmit(data.code);
+        setPrompt("");
+        
+        toast({
+          title: "Код успешно сгенерирован",
+          description: "Результат отображен в редакторе кода",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating code:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось сгенерировать код. Попробуйте снова.",
+      });
     }
   };
 
@@ -29,7 +56,7 @@ export const PromptInput = ({ onSubmit, isLoading }: PromptInputProps) => {
       />
       <Button type="submit" disabled={isLoading || !prompt.trim()}>
         <Send className="h-4 w-4 mr-2" />
-        Отправить
+        {isLoading ? "Генерация..." : "Отправить"}
       </Button>
     </form>
   );

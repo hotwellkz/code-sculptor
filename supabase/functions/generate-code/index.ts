@@ -1,6 +1,7 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
-import { Anthropic } from "npm:@anthropic-ai/sdk@0.17.1";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,104 +11,68 @@ const corsHeaders = {
 serve(async (req) => {
   console.log('Received request:', req.method);
   
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, projectId } = await req.json();
     console.log('Received prompt:', prompt);
 
     if (!prompt) {
-      console.error('No prompt provided');
-      return new Response(
-        JSON.stringify({ error: 'Prompt is required' }), 
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      throw new Error('Prompt is required');
     }
 
-    // Initialize OpenAI client
     const openai = new OpenAI(Deno.env.get('OPENAI_API_KEY') || '');
     console.log('OpenAI client initialized');
-    
-    // Initialize Anthropic client
-    const anthropic = new Anthropic({
-      apiKey: Deno.env.get('ANTHROPIC_API_KEY') || '',
-    });
-    console.log('Anthropic client initialized');
 
-    try {
-      // Try OpenAI first
-      console.log('Attempting OpenAI request...');
-      const openaiResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful code generator. Generate clean, well-documented code based on the user's description."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
-      });
-      console.log('OpenAI request successful');
-
-      return new Response(
-        JSON.stringify({ 
-          code: openaiResponse.choices[0].message.content,
-          provider: 'openai'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful code generator. Generate clean, well-documented code based on the user's description."
+        },
+        {
+          role: "user",
+          content: prompt
         }
-      );
+      ]
+    });
 
-    } catch (openaiError) {
-      console.error('OpenAI Error:', openaiError);
+    const generatedCode = response.choices[0].message.content;
+    console.log('Code generated successfully');
 
-      // Fallback to Anthropic if OpenAI fails
-      try {
-        console.log('Attempting Anthropic request...');
-        const anthropicResponse = await anthropic.messages.create({
-          model: "claude-3-opus-20240229",
-          max_tokens: 4096,
-          messages: [{
-            role: "user",
-            content: prompt
-          }]
+    // Save generated code to the database
+    if (projectId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { error: fileError } = await supabase
+        .from('generated_files')
+        .insert({
+          project_id: projectId,
+          name: 'generated-code.ts',
+          content: generatedCode,
+          path: '/generated-code.ts'
         });
-        console.log('Anthropic request successful');
 
-        return new Response(
-          JSON.stringify({ 
-            code: anthropicResponse.content[0].text,
-            provider: 'anthropic'
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-
-      } catch (anthropicError) {
-        console.error('Anthropic Error:', anthropicError);
-        throw new Error('Both AI providers failed');
+      if (fileError) {
+        console.error('Error saving generated file:', fileError);
+        throw fileError;
       }
     }
 
-  } catch (error) {
-    console.error('Server Error:', error);
-    
     return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: error.message 
-      }),
+      JSON.stringify({ code: generatedCode }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in generate-code function:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

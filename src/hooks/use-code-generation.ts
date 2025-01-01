@@ -5,20 +5,21 @@ export const useCodeGeneration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateCode = async (prompt: string) => {
+  const generateCode = async (prompt: string, projectId?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-code', {
-        body: { prompt }
+        body: { prompt, projectId }
       });
 
       if (error) throw error;
 
       return data;
     } catch (err) {
-      setError(err.message || 'Произошла ошибка при генерации кода');
+      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при генерации кода';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
