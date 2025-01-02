@@ -8,5 +8,10 @@ module.exports = {
   supabase: {
     projectId: 'msqyjrpkylernifouxct',
     functions: ['generate-code']
+  },
+  docker: {
+    registry: process.env.DOCKER_REGISTRY || 'ghcr.io',
+    imageName: 'ai-code-generator',
+    tag: process.env.GITHUB_SHA || 'latest'
   }
 };
