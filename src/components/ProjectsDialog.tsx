@@ -58,17 +58,34 @@ export const ProjectsDialog = ({ open, onOpenChange }: ProjectsDialogProps) => {
 
   const deleteProject = async (id: string) => {
     try {
-      const { error } = await supabase
+      // Удаляем сообщения чата
+      const { error: chatError } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('project_id', id);
+
+      if (chatError) throw chatError;
+
+      // Удаляем сгенерированные файлы
+      const { error: filesError } = await supabase
+        .from('generated_files')
+        .delete()
+        .eq('project_id', id);
+
+      if (filesError) throw filesError;
+
+      // Удаляем сам проект
+      const { error: projectError } = await supabase
         .from('projects')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (projectError) throw projectError;
 
       setProjects(projects.filter(p => p.id !== id));
       toast({
         title: "Проект удален",
-        description: "Проект был успешно удален",
+        description: "Проект и все связанные данные были успешно удалены",
       });
     } catch (error) {
       console.error('Error deleting project:', error);
