@@ -8,6 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Message {
   id: string;
@@ -26,9 +33,10 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
   const { parsedMessages, parseMessages } = useMessageParser();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
+  const [technology, setTechnology] = useState<string>("react");
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId);
 
   useEffect(() => {
-    // Получаем текущего пользователя при монтировании компонента
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
@@ -36,19 +44,18 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     });
   }, []);
 
-  // Загрузка сообщений при монтировании компонента
   useEffect(() => {
-    if (projectId) {
+    if (currentProjectId) {
       loadMessages();
     }
-  }, [projectId]);
+  }, [currentProjectId]);
 
   const loadMessages = async () => {
     try {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('project_id', currentProjectId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -72,12 +79,45 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     }
   };
 
+  const createNewProject = async () => {
+    try {
+      if (!userId) throw new Error("Пользователь не авторизован");
+
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          name: `Проект ${new Date().toLocaleString('ru')}`,
+          user_id: userId,
+          description: `Технология: ${technology}`
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      setCurrentProjectId(project.id);
+      return project.id;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось создать новый проект",
+      });
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !projectId || !userId) return;
+    if (!message.trim() || !userId) return;
 
     try {
+      // Создаем новый проект, если его еще нет
+      const projectId = currentProjectId || await createNewProject();
+      if (!projectId) return;
+
       // Сохраняем сообщение пользователя
       const userMessage = {
         project_id: projectId,
@@ -106,7 +146,11 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
 
       // Получаем ответ от ИИ
       const { data, error } = await supabase.functions.invoke('generate-code', {
-        body: { prompt: message, projectId }
+        body: { 
+          prompt: message, 
+          projectId,
+          technology 
+        }
       });
 
       if (error) throw error;
@@ -154,6 +198,19 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
 
   return (
     <div className="h-full flex flex-col">
+      <div className="border-b p-4">
+        <Select value={technology} onValueChange={setTechnology}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Выберите технологию" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="react">React</SelectItem>
+            <SelectItem value="vue">Vue</SelectItem>
+            <SelectItem value="nodejs">Node.js</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg) => (
