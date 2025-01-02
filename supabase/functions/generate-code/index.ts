@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://deno.land/x/openai@v4.69.0/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
   prompt: string;
   useAnthropicModel?: boolean;
+  projectId?: string;
 }
 
 serve(async (req) => {
@@ -17,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, useAnthropicModel = false } = await req.json() as RequestBody;
+    const { prompt, useAnthropicModel = false, projectId } = await req.json() as RequestBody;
     
     if (!prompt) {
       console.error('[Validation] Empty prompt received');
@@ -81,11 +83,63 @@ serve(async (req) => {
       console.log('[Anthropic] Code generation completed, length:', generatedCode.length);
     }
 
+    // Сохранение сгенерированного кода в Storage
+    if (projectId && generatedCode) {
+      console.log('[Storage] Initializing Supabase client');
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const fileName = `${crypto.randomUUID()}.js`;
+      const filePath = `${projectId}/${fileName}`;
+
+      console.log('[Storage] Uploading generated code to storage:', filePath);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('generated-files')
+        .upload(filePath, new Blob([generatedCode], { type: 'application/javascript' }), {
+          contentType: 'application/javascript',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('[Storage] Upload error:', uploadError);
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
+      }
+
+      console.log('[Storage] File uploaded successfully:', uploadData);
+
+      // Получаем публичную ссылку на файл
+      const { data: urlData } = await supabase.storage
+        .from('generated-files')
+        .getPublicUrl(filePath);
+
+      console.log('[Storage] Generated public URL:', urlData.publicUrl);
+
+      // Сохраняем информацию о файле в базу данных
+      const { error: dbError } = await supabase
+        .from('generated_files')
+        .insert({
+          project_id: projectId,
+          name: fileName,
+          content: generatedCode,
+          path: filePath
+        });
+
+      if (dbError) {
+        console.error('[Database] Error saving file metadata:', dbError);
+        throw new Error(`Failed to save file metadata: ${dbError.message}`);
+      }
+    }
+
     const endTime = performance.now();
     console.log(`[Performance] Function execution time: ${(endTime - startTime).toFixed(2)}ms`);
 
     return new Response(
-      JSON.stringify({ code: generatedCode }),
+      JSON.stringify({ 
+        code: generatedCode,
+        message: 'Code generated and saved successfully'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
