@@ -8,8 +8,11 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const startTime = performance.now();
+  
   // Обработка CORS
   if (req.method === 'OPTIONS') {
+    console.log('[CORS] Handling preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -17,16 +20,19 @@ serve(async (req) => {
     const { prompt, useAnthropicModel = false } = await req.json() as RequestBody;
     
     if (!prompt) {
+      console.error('[Validation] Empty prompt received');
       throw new Error('Prompt is required');
     }
 
-    console.log(`Generating code for prompt: ${prompt}`);
-    console.log(`Using model: ${useAnthropicModel ? 'Anthropic' : 'OpenAI'}`);
+    console.log(`[Request] Received prompt: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
+    console.log(`[Config] Using model: ${useAnthropicModel ? 'Anthropic Claude' : 'OpenAI GPT'}`);
+    console.log(`[Auth] API Keys present: OpenAI (${!!Deno.env.get("OPENAI_API_KEY")}), Anthropic (${!!Deno.env.get("ANTHROPIC_API_KEY")})`);
 
     let generatedCode = '';
 
     // Генерация кода через OpenAI
     if (!useAnthropicModel) {
+      console.log('[OpenAI] Starting code generation');
       const openai = new OpenAI({
         apiKey: Deno.env.get("OPENAI_API_KEY") || ""
       });
@@ -46,10 +52,11 @@ serve(async (req) => {
       });
 
       generatedCode = completion.choices[0]?.message?.content || "";
+      console.log('[OpenAI] Code generation completed, length:', generatedCode.length);
     }
     // Генерация кода через Anthropic
     else {
-      // Используем fetch напрямую для Anthropic API
+      console.log('[Anthropic] Starting code generation');
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -71,10 +78,11 @@ serve(async (req) => {
 
       const data = await response.json();
       generatedCode = data.content[0]?.text || "";
+      console.log('[Anthropic] Code generation completed, length:', generatedCode.length);
     }
 
-    // Логирование успешной генерации
-    console.log('Code generated successfully');
+    const endTime = performance.now();
+    console.log(`[Performance] Function execution time: ${(endTime - startTime).toFixed(2)}ms`);
 
     return new Response(
       JSON.stringify({ code: generatedCode }),
@@ -82,11 +90,17 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    // Логирование ошибки
-    console.error('Error generating code:', error);
+    console.error('[Error] Details:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
