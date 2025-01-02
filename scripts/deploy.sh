@@ -1,13 +1,8 @@
 #!/bin/bash
 
 # Проверяем наличие переменных окружения
-if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-    echo "Error: SUPABASE_ACCESS_TOKEN is not set"
-    exit 1
-fi
-
-if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-    echo "Error: CLOUDFLARE_API_TOKEN is not set"
+if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+    echo "Error: NETLIFY_AUTH_TOKEN is not set"
     exit 1
 fi
 
@@ -27,8 +22,8 @@ npm run build
 echo "Deploying Edge Functions..."
 supabase functions deploy generate-code --project-ref msqyjrpkylernifouxct
 
-# Деплоим фронтенд
-echo "Deploying frontend..."
-npm run deploy
+# Деплоим на Netlify
+echo "Deploying to Netlify..."
+npx netlify-cli deploy --prod --dir=dist
 
 echo "Deployment completed successfully!"
