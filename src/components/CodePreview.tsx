@@ -20,14 +20,14 @@ export const CodePreview = ({ code }: CodePreviewProps) => {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full bg-[hsl(var(--editor-bg))]">
       <div className="relative">
         {code && (
           <div className="absolute right-2 top-2">
             <CopyButton text={code} />
           </div>
         )}
-        <pre className="p-4 text-sm">
+        <pre className="p-4 text-sm leading-relaxed">
           <code>
             {code || "// Здесь будет отображаться сгенерированный код"}
           </code>
