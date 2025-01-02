@@ -37,4 +37,4 @@ serve(async (req) => {
     For Node.js, include proper error handling and follow best practices.
     Respond in the following format:
     <lov-write file_path="path/to/file">
-    // code here
+    // Your generated code here
