@@ -1,16 +1,16 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { OpenAI } from "https://deno.land/x/openai@v4.69.0/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
+const openai = new OpenAI({
+  apiKey: Deno.env.get('OPENAI_API_KEY') || '',
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const openai = new OpenAI({
-  apiKey: Deno.env.get('OPENAI_API_KEY') || '',
-});
 
 serve(async (req) => {
   // Handle CORS preflight requests
