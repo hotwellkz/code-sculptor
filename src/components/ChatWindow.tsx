@@ -25,6 +25,16 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const { parsedMessages, parseMessages } = useMessageParser();
   const { toast } = useToast();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Получаем текущего пользователя при монтировании компонента
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id);
+      }
+    });
+  }, []);
 
   // Загрузка сообщений при монтировании компонента
   useEffect(() => {
@@ -65,14 +75,15 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !projectId) return;
+    if (!message.trim() || !projectId || !userId) return;
 
     try {
       // Сохраняем сообщение пользователя
       const userMessage = {
         project_id: projectId,
         content: message,
-        is_ai_response: false
+        is_ai_response: false,
+        user_id: userId
       };
 
       const { data: savedMessage, error: saveError } = await supabase
@@ -105,7 +116,8 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         const aiMessage = {
           project_id: projectId,
           content: data.response,
-          is_ai_response: true
+          is_ai_response: true,
+          user_id: userId
         };
 
         const { data: savedAiMessage, error: aiSaveError } = await supabase
