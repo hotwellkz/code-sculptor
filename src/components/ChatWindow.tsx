@@ -64,7 +64,7 @@ export const ChatWindow = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col">
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg) => (
@@ -72,13 +72,10 @@ export const ChatWindow = () => {
               key={msg.id}
               className={`p-4 rounded-lg ${
                 msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground ml-auto max-w-[80%]' 
-                  : 'bg-muted max-w-[80%]'
+                  ? 'bg-primary text-primary-foreground ml-auto' 
+                  : 'bg-muted'
               }`}
             >
-              <div className="text-sm mb-1 text-muted-foreground">
-                {new Date(msg.created_at).toLocaleTimeString()}
-              </div>
               {msg.role === 'assistant' 
                 ? parsedMessages[msg.id] || msg.content 
                 : msg.content}
@@ -87,18 +84,16 @@ export const ChatWindow = () => {
         </div>
       </ScrollArea>
 
-      <form onSubmit={handleSubmit} className="border-t p-4 bg-card">
-        <div className="flex gap-2">
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Опишите, какой код вы хотите сгенерировать..."
-            className="flex-1"
-          />
-          <Button type="submit" size="icon">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+      <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
+        <Input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Опишите, какой код вы хотите сгенерировать..."
+          className="flex-1"
+        />
+        <Button type="submit" size="icon">
+          <Send className="h-4 w-4" />
+        </Button>
       </form>
     </div>
   );

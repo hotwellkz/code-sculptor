@@ -20,17 +20,11 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="border-b p-4 flex justify-between items-center bg-card">
+    <div className="h-screen flex flex-col">
+      <header className="border-b p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold">AI Генератор Кода</h1>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="secondary"
-            onClick={() => setIsProjectsOpen(true)}
-            className="font-medium"
-          >
-            Проекты
-          </Button>
+          <Button onClick={() => setIsProjectsOpen(true)}>Проекты</Button>
           <Button variant="ghost" size="icon" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" />
           </Button>
@@ -38,23 +32,15 @@ const Index = () => {
       </header>
 
       <SidebarProvider>
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex">
           <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel 
-              defaultSize={30} 
-              minSize={20} 
-              className="bg-card"
-            >
+            <ResizablePanel defaultSize={30} minSize={20}>
               <ChatWindow />
             </ResizablePanel>
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel 
-              defaultSize={20} 
-              minSize={15}
-              className="bg-card"
-            >
+            <ResizablePanel defaultSize={20} minSize={15}>
               <Sidebar variant="inset" collapsible="icon">
                 <SidebarContent>
                   <FileManager />
