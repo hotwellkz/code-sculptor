@@ -28,11 +28,16 @@ serve(async (req) => {
 
     console.log(`Processing prompt for ${technology}: "${prompt}"`);
 
-    const systemPrompt = `You are an AI assistant that generates ${technology.toUpperCase()} code based on user descriptions. 
-    Always provide complete, working code examples with proper imports and error handling.
-    For React components, include proper TypeScript types and use modern React practices.
-    For Vue components, use Vue 3 composition API.
-    For Node.js, include proper error handling and follow best practices.
-    Respond in the following format:
-    <lov-write file_path="path/to/file">
-    // Your code here
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an AI assistant that generates ${technology.toUpperCase()} code based on user descriptions. 
+          Always provide complete, working code examples with proper imports and error handling.
+          For React components, include proper TypeScript types and use modern React practices.
+          For Vue components, use Vue 3 composition API.
+          For Node.js, include proper error handling and follow best practices.
+          Respond in the following format:
+          <lov-write file_path="path/to/file">
+          // Your code here
