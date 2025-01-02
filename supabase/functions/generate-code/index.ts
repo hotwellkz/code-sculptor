@@ -15,7 +15,6 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -37,7 +36,60 @@ serve(async (req) => {
           Always provide complete, working code examples with proper imports and error handling.
           For React components, include proper TypeScript types and use modern React practices.
           For Vue components, use Vue 3 composition API.
-          For Node.js, include proper error handling and follow best practices.
-          Respond in the following format:
-          <lov-write file_path="path/to/file">
-          // Your code here
+          For Node.js, include proper error handling and follow best practices.`
+        },
+        { role: 'user', content: prompt }
+      ],
+    });
+
+    const generatedCode = response.choices[0].message.content;
+
+    // If projectId is provided, save the generated code to the database
+    if (projectId) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') || '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+      );
+
+      const { error: saveError } = await supabaseClient
+        .from('generated_files')
+        .insert({
+          project_id: projectId,
+          name: `generated_${new Date().getTime()}.${technology === 'react' ? 'tsx' : 'js'}`,
+          content: generatedCode,
+          path: `/src/generated/${technology}/`,
+        });
+
+      if (saveError) {
+        console.error('Error saving generated code:', saveError);
+        throw new Error('Failed to save generated code');
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        response: generatedCode,
+        technology,
+        projectId 
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
+  } catch (error) {
+    console.error('Error in generate-code function:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }), 
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
+  }
+});
