@@ -4,6 +4,7 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import Home from "@/pages/Home";
 import Auth from "@/pages/Auth";
+import Projects from "@/pages/Projects";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -43,6 +44,11 @@ function App() {
         <Route path="/" element={
           <ProtectedRoute>
             <Home />
+          </ProtectedRoute>
+        } />
+        <Route path="/projects" element={
+          <ProtectedRoute>
+            <Projects />
           </ProtectedRoute>
         } />
       </Routes>
