@@ -10,8 +10,7 @@ interface RequestBody {
 }
 
 serve(async (req) => {
-  const startTime = performance.now();
-  
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('[CORS] Handling preflight request');
     return new Response(null, { headers: corsHeaders });
@@ -25,13 +24,12 @@ serve(async (req) => {
       throw new Error('Prompt is required');
     }
 
-    console.log(`[Request] Received prompt: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}" for ${technology}`);
-    
+    console.log(`[Request] Processing prompt for ${technology}: "${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
+
     const openai = new OpenAI({
       apiKey: Deno.env.get("OPENAI_API_KEY") || ""
     });
 
-    // Формируем системный промпт в зависимости от выбранной технологии
     const systemPrompt = `You are an AI assistant that generates ${technology.toUpperCase()} code based on user descriptions. 
     Always provide complete, working code examples with proper imports and error handling.
     For React components, include proper TypeScript types and use modern React practices.
