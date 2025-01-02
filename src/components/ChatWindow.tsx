@@ -30,12 +30,16 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
+        console.log("User authenticated:", user.id);
+      } else {
+        console.log("No authenticated user found");
       }
     });
   }, []);
 
   useEffect(() => {
     if (currentProjectId) {
+      console.log("Loading messages for project:", currentProjectId);
       loadMessages();
     }
   }, [currentProjectId]);
@@ -48,7 +52,12 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         .eq('project_id', currentProjectId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading messages:", error);
+        throw error;
+      }
+
+      console.log("Messages loaded:", data);
 
       const formattedMessages = data.map(msg => ({
         id: msg.id,
@@ -71,7 +80,15 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
 
   const createNewProject = async () => {
     try {
-      if (!userId) throw new Error("Пользователь не авторизован");
+      if (!userId) {
+        console.error("No authenticated user");
+        toast({
+          variant: "destructive",
+          title: "Ошибка",
+          description: "Необходимо авторизоваться",
+        });
+        return null;
+      }
 
       const { data: project, error: projectError } = await supabase
         .from('projects')
@@ -83,8 +100,12 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         .select()
         .single();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error("Error creating project:", projectError);
+        throw projectError;
+      }
 
+      console.log("New project created:", project);
       setCurrentProjectId(project.id);
       return project.id;
     } catch (error) {
@@ -99,12 +120,25 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
   };
 
   const handleSubmit = async (message: string) => {
-    if (!userId) return;
+    if (!userId) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Необходимо авторизоваться",
+      });
+      return;
+    }
     
     setIsLoading(true);
+    console.log("Submitting message:", message);
+    
     try {
       const projectId = currentProjectId || await createNewProject();
-      if (!projectId) return;
+      if (!projectId) {
+        throw new Error("Не удалось получить ID проекта");
+      }
+
+      console.log("Using project ID:", projectId);
 
       const userMessage = {
         project_id: projectId,
@@ -119,7 +153,12 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         .select()
         .single();
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error("Error saving user message:", saveError);
+        throw saveError;
+      }
+
+      console.log("User message saved:", savedMessage);
 
       const newUserMessage: Message = {
         id: savedMessage.id,
@@ -130,6 +169,8 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
 
       setMessages(prev => [...prev, newUserMessage]);
 
+      console.log("Calling generate-code function with:", { message, projectId, technology });
+      
       const { data, error } = await supabase.functions.invoke('generate-code', {
         body: { 
           prompt: message, 
@@ -138,7 +179,12 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error from generate-code function:", error);
+        throw error;
+      }
+
+      console.log("Response from generate-code:", data);
 
       if (data) {
         const aiMessage = {
@@ -154,7 +200,12 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
           .select()
           .single();
 
-        if (aiSaveError) throw aiSaveError;
+        if (aiSaveError) {
+          console.error("Error saving AI message:", aiSaveError);
+          throw aiSaveError;
+        }
+
+        console.log("AI message saved:", savedAiMessage);
 
         const newAiMessage: Message = {
           id: savedAiMessage.id,
@@ -167,7 +218,7 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         parseMessages([...messages, newAiMessage]);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in message submission:', error);
       toast({
         variant: "destructive",
         title: "Ошибка",
