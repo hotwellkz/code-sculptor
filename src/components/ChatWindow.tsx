@@ -6,15 +6,8 @@ import { Send } from "lucide-react";
 import { useMessageParser } from "@/hooks/use-message-parser";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ChatMessage } from "./chat/ChatMessage";
+import { TechnologySelect } from "./chat/TechnologySelect";
 
 interface Message {
   id: string;
@@ -114,11 +107,9 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     if (!message.trim() || !userId) return;
 
     try {
-      // Создаем новый проект, если его еще нет
       const projectId = currentProjectId || await createNewProject();
       if (!projectId) return;
 
-      // Сохраняем сообщение пользователя
       const userMessage = {
         project_id: projectId,
         content: message,
@@ -144,7 +135,6 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
       setMessages(prev => [...prev, newUserMessage]);
       setMessage("");
 
-      // Получаем ответ от ИИ
       const { data, error } = await supabase.functions.invoke('generate-code', {
         body: { 
           prompt: message, 
@@ -156,7 +146,6 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
       if (error) throw error;
 
       if (data) {
-        // Сохраняем ответ ИИ
         const aiMessage = {
           project_id: projectId,
           content: data.response,
@@ -192,49 +181,18 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     }
   };
 
-  const formatDate = (date: string) => {
-    return format(new Date(date), "d MMMM, HH:mm", { locale: ru });
-  };
-
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b p-4">
-        <Select value={technology} onValueChange={setTechnology}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Выберите технологию" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="react">React</SelectItem>
-            <SelectItem value="vue">Vue</SelectItem>
-            <SelectItem value="nodejs">Node.js</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <TechnologySelect value={technology} onChange={setTechnology} />
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg) => (
-            <div
+            <ChatMessage
               key={msg.id}
-              className={`flex flex-col ${
-                msg.role === 'user' 
-                  ? 'items-end' 
-                  : 'items-start'
-              }`}
-            >
-              <div className={`p-4 rounded-lg max-w-[80%] ${
-                msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted'
-              }`}>
-                {msg.role === 'assistant' 
-                  ? parsedMessages[msg.id] || msg.content 
-                  : msg.content}
-              </div>
-              <span className="text-xs text-muted-foreground mt-1">
-                {formatDate(msg.created_at)}
-              </span>
-            </div>
+              {...msg}
+              parsedContent={parsedMessages[msg.id]}
+            />
           ))}
         </div>
       </ScrollArea>
@@ -246,7 +204,7 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
           placeholder="Опишите, какой код вы хотите сгенерировать..."
           className="flex-1"
         />
-        <Button type="submit" size="icon">
+        <Button type="submit" size="icon" aria-label="Отправить">
           <Send className="h-4 w-4" />
         </Button>
       </form>
