@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
 import { useMessageParser } from "@/hooks/use-message-parser";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ChatMessage } from "./chat/ChatMessage";
 import { TechnologySelect } from "./chat/TechnologySelect";
+import { ChatMessageList } from "./chat/ChatMessageList";
+import { ChatForm } from "./chat/ChatForm";
 
 interface Message {
   id: string;
@@ -21,13 +18,13 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow = ({ projectId }: ChatWindowProps) => {
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const { parsedMessages, parseMessages } = useMessageParser();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [technology, setTechnology] = useState<string>("react");
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -101,11 +98,10 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (message: string) => {
+    if (!userId) return;
     
-    if (!message.trim() || !userId) return;
-
+    setIsLoading(true);
     try {
       const projectId = currentProjectId || await createNewProject();
       if (!projectId) return;
@@ -133,7 +129,6 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
       };
 
       setMessages(prev => [...prev, newUserMessage]);
-      setMessage("");
 
       const { data, error } = await supabase.functions.invoke('generate-code', {
         body: { 
@@ -178,36 +173,16 @@ export const ChatWindow = ({ projectId }: ChatWindowProps) => {
         title: "Ошибка",
         description: "Не удалось отправить сообщение. Попробуйте снова.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="h-full flex flex-col">
       <TechnologySelect value={technology} onChange={setTechnology} />
-
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              {...msg}
-              parsedContent={parsedMessages[msg.id]}
-            />
-          ))}
-        </div>
-      </ScrollArea>
-
-      <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
-        <Input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Опишите, какой код вы хотите сгенерировать..."
-          className="flex-1"
-        />
-        <Button type="submit" size="icon" aria-label="Отправить">
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      <ChatMessageList messages={messages} parsedMessages={parsedMessages} />
+      <ChatForm onSubmit={handleSubmit} isLoading={isLoading} />
     </div>
   );
 };
